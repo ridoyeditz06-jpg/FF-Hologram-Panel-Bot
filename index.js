@@ -10,6 +10,13 @@ async function connectToWhatsApp() {
     const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
     const sock = makeWASocket({ auth: state });
 
+    // পেয়ারিং কোডের জন্য নতুন অংশ
+    if (!sock.authState.creds.registered) {
+        const phoneNumber = "8801708071532"; // আপনার হোয়াটসঅ্যাপ নম্বর
+        const code = await sock.requestPairingCode(phoneNumber);
+        console.log(`Pairing code: ${code}`);
+    }
+
     sock.ev.on('creds.update', saveCreds);
 
     sock.ev.on('messages.upsert', async ({ messages }) => {
