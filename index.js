@@ -8,17 +8,40 @@ app.listen(process.env.PORT || 3000);
 
 async function connectToWhatsApp() {
     const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
-    const sock = makeWASocket({ auth: state });
-
-    // পেয়ারিং কোডের জন্য নতুন অংশ
-    if (!sock.authState.creds.registered) {
-        const phoneNumber = "8801708071532"; // আপনার হোয়াটসঅ্যাপ নম্বর
-        const code = await sock.requestPairingCode(phoneNumber);
-        console.log(`Pairing code: ${code}`);
-    }
+    
+    const sock = makeWASocket({ 
+        auth: state,
+        printQRInTerminal: false
+    });
 
     sock.ev.on('creds.update', saveCreds);
 
+    // বট কানেকশন আপডেট
+    sock.ev.on('connection.update', async (update) => {
+        const { connection, lastDisconnect } = update;
+        if (connection === 'open') {
+            console.log('Bot Connected Successfully!');
+        } else if (connection === 'close') {
+            if (lastDisconnect?.error?.output?.statusCode !== 401) {
+                connectToWhatsApp();
+            }
+        }
+    });
+
+    // পেয়ারিং কোড রিকোয়েস্ট
+    if (!sock.authState.creds.registered) {
+        setTimeout(async () => {
+            const phoneNumber = "8801708071532"; 
+            try {
+                const code = await sock.requestPairingCode(phoneNumber);
+                console.log(`Pairing code: ${code}`);
+            } catch (err) {
+                console.log("Error requesting pairing code: ", err);
+            }
+        }, 5000); 
+    }
+
+    // মেসেজ হ্যান্ডলার
     sock.ev.on('messages.upsert', async ({ messages }) => {
         const msg = messages[0];
         if (!msg.message || msg.key.fromMe) return;
